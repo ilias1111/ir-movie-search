@@ -1,9 +1,8 @@
 import streamlit as st
 import search_modes
-import time
 from elasticsearch import Elasticsearch
 import configparser
-import elastic_func
+import preprocessing
 
 MODES = ["Private", "Basic", "Advance", "Galactic"]
 INDEX = "movies_test"
@@ -17,6 +16,8 @@ config.read('settings.ini')
 
 es = Elasticsearch([{'host': config["ES"]["host"], 'port': config["ES"]["port"]}])
 
+movies, reviews, user_class, cluster_average, predicted_rating = preprocessing.load_init_data()
+
 
 # sidebar
 private = st.sidebar.radio(
@@ -26,27 +27,13 @@ private = st.sidebar.radio(
 
 if private == "Off":
 
-    id = st.sidebar.text_input("Your ID")
-
-if 1 == 1:
-
-    st.sidebar.markdown("Preprocessing OK")
-
-elif 1 == 0:
-
-    st.sidebar.markdown("Preprocessing NOT OK")
-
-
-if st.sidebar.button('Reset'):
-
-    with st.spinner('Wait for it...'):
-
-        time.sleep(5)
-    st.sidebar.success('Done!')
+    id = st.sidebar.text_input("Your ID", 1)
+    u_class = user_class[user_class.userId == int(id)]['class'].values[0]
 
 
 
 title = st.text_input('Movie title', 'Toy Story')
+
 
 if private == "Off":
 
@@ -60,19 +47,24 @@ if st.button('Go'):
 
     if st_ms == MODES[0]:
 
-        results = elastic_func.search_to_dataframe(es, INDEX, title, 30)
+        results = search_modes.private(title, es, INDEX, 30)
         st.dataframe(results)
 
     elif st_ms == MODES[1]:
 
-        st.write(MODES[1])
+        results = search_modes.basic(title, int(id), es, INDEX, 30, reviews)
+        st.dataframe(results)
 
     elif st_ms == MODES[2]:
 
-        st.write(MODES[2])
+        results = search_modes.advance(title, int(id), es, INDEX, 30, reviews, cluster_average, u_class)
+        st.dataframe(results)
 
     elif st_ms == MODES[3]:
 
-        st.write(MODES[3])
+        print(u_class)
+        results = search_modes.cambridge_analytica(title, int(id), es, INDEX, 30, reviews,
+                                                   cluster_average, u_class, predicted_rating)
+        st.dataframe(results)
 
 
